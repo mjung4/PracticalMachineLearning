@@ -1,0 +1,124 @@
+---
+title: 'Qualitative Activity of Weight lifting excercises '
+author: "M. Jung"
+date: "February, 2016"
+output:
+  html_document: default
+  pdf_document:
+    fig_caption: yes
+---
+         
+## Executive Summary  
+
+<!--
+http://mjung4.github.io/PracticalMachineLearning/QualityOfWeightLiftingExcercises
+-->
+
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases. 
+
+One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. 
+
+Based on given data from accelerometers I predict the manner in which they did Weight lifting excercises.
+
+The goal was to built different models, use cross validation, calculate the expected out of sample error and predict how well the excercise is done on a small given dataset.  
+
+As result I used a model calculated with Random Forest. On a testing set which was randomly build on the given data I get an accuracy of ...%.
+
+The prediction on the small given dataset was calculated and meets the expected "classes" on the Course Project Prediction Quiz.
+
+For more information of the data please refer here:
+http://groupware.les.inf.puc-rio.br/har
+Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013. 
+
+
+<!---
+Loading the data
+-->
+
+## Loading   
+
+First I load the collected data ("pml-training.csv"") und the data for the prediction ("pml-testing.csv").   
+
+```{r}
+# read datasets
+rm(list=ls())
+urltrain <-  
+  "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+pmltrain <- read.csv(url(urltrain))
+urltest <-  
+  "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+pmltest <- read.csv(url(urltest))
+rm ("urltrain", "urltest")
+```
+
+"pml-testing" only has twenty rows and includes not the Attribut "classes".
+
+So for testing the model and estimate the expexted accuracy I create a training set and a test set from the pml-training data.
+
+
+```{r}
+# create own training and testset from pmltrain
+set.seed(1234)
+library(caret)
+trainingRows <- createDataPartition(pmltrain$classe,
+                                    p = .75,
+                                    list= FALSE)
+training <- pmltrain[trainingRows,]
+testing <- pmltrain[-trainingRows,]  
+rm(trainingRows)
+```
+
+## Feature Selection
+
+The next step is the feature selection on the training data. 
+
+I do the following:
+- remove the first seven columns which are not predictors
+- remove the columns wiht low variance
+- remove the columns with sparse values
+
+<!--
+
+```{r}
+# Attribute selection
+# Remove first seven attributes
+training <- training[,-(1:7)]
+# Remove Attributes with low variance
+nearZeorVariance <- nearZeroVar(training)
+training <- training[,-nearZeorVariance]
+rm(nearZeorVariance)
+# Remove attributs with mostly NULL
+mostlyNA <- sapply(training, function(x) mean(is.na(x))) > 0.95
+training <- training[, mostlyNA==F]
+rm(mostlyNA)
+```
+
+
+## Multiple Models
+
+With these predictors I build a random forest model. 
+On the training set I get a accuracy of 100%. 
+On the testing set it is still a very high accuracy of ...%.
+
+```{r}
+# Random Forest
+fitControl <- trainControl(method="cv", number=3, verboseIter=F)
+modelFit <- train(classe ~ ., 
+                  data = training,
+                  method = "rf",
+                  trControl=fitControl
+)
+#predict(modelFit)
+confusionMatrix(predict(modelFit), training$classe)
+# --> overfitting???
+predicttest <- predict(modelFit, newdata = testing)
+confusionMatrix(predicttest, testing$classe)
+# Modell auf Testdaten anwenden
+predictpmltest <- predict(modelFit, newdata = pmltest)
+# Ergebnis für das Quiz
+predictpmltest
+#[1] B A B A A E D B A A B C B A E E A B B B
+#Levels: A B C D E
+```
+
+-->
