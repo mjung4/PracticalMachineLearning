@@ -10,5 +10,6 @@ Github repo with
 *   compiled HTML file 
 
 Link to the gh-pages branch so the HTML page can be viewed online:    
-http://mjung4.github.io/PracticalMachineLearning/QualityOfWeightLiftingExcercises
+http://mjung4.github.io/PracticalMachineLearning/QualityOfWeightLiftingExcercises    
+<a href="http://mjung4.github.io/PracticalMachineLearning/QualityOfWeightLiftingExcercises"/a>
 
