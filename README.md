@@ -11,4 +11,4 @@ Github repo with
 
 Link to the gh-pages branch so the HTML page can be viewed online:    
 http://mjung4.github.io/PracticalMachineLearning/QualityOfWeightLiftingExcercises    
-<a href="http://mjung4.github.io/PracticalMachineLearning/QualityOfWeightLiftingExcercises">HTML Tags</a>
+<href="http://mjung4.github.io/PracticalMachineLearning/QualityOfWeightLiftingExcercises" target="_blank">
