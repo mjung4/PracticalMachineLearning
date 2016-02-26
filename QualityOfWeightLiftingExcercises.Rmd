@@ -1,5 +1,5 @@
 ---
-title: 'Qualitative Activity of Weight lifting excercises '
+title: 'Qualitative Activity of Weight lifting excercises'
 author: "M. Jung"
 date: "February, 2016"
 output:
@@ -7,118 +7,218 @@ output:
   pdf_document:
     fig_caption: yes
 ---
+
+## open
+- work on description of cross validation
+- work on "out of sample error"
+- one nice figure of random forest
+
          
-## Executive Summary  
+## Executive Summary
+One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it.
+On the following Internet Site you can find data from accelerometers to quantify the quality of an exercise:
+http://groupware.les.inf.puc-rio.br/har Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
+Based on these given data the goal of this project is to predict the manner in which Weight lifting exercises are done.
+So I built different prediction models, used cross validation, calculated the expected out of sample error of each model and predicted how well the exercise is done on a small given data set.
+As result I used the model calculated with Random Forest for the prediction. The reason was a the best expected accuracy.
+The prediction on the small given data set was calculated with this model and meets the expected outcome on the Coursera Course Project Prediction Quiz.
 
-<!--
-http://mjung4.github.io/PracticalMachineLearning/QualityOfWeightLiftingExcercises
--->
+## Loading the data   
+First I load the collected data ("pml-training.csv"") and the small data set for the prediction ("pml-testing.csv").
 
-The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases. 
-
-One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. 
-
-Based on given data from accelerometers I predict the manner in which they did Weight lifting excercises.
-
-The goal was to built different models, use cross validation, calculate the expected out of sample error and predict how well the excercise is done on a small given dataset.  
-
-As result I used a model calculated with Random Forest. On a testing set which was randomly build on the given data I get an accuracy of ...%.
-
-The prediction on the small given dataset was calculated and meets the expected "classes" on the Course Project Prediction Quiz.
-
-For more information of the data please refer here:
-http://groupware.les.inf.puc-rio.br/har
-Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013. 
-
-
-<!---
-Loading the data
--->
-
-## Loading   
-
-First I load the collected data ("pml-training.csv"") und the data for the prediction ("pml-testing.csv").   
-
-```{r}
-# read datasets
-rm(list=ls())
+```{r getData, cache=TRUE}
 urltrain <-  
   "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
-pmltrain <- read.csv(url(urltrain))
+#pmltrain <- read.csv(url(urltrain))
 urltest <-  
   "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
-pmltest <- read.csv(url(urltest))
-rm ("urltrain", "urltest")
+#pmltest <- read.csv(url(urltest))
+setwd("~/Coursera/DataAnalysis/practical_machine_learning/project/data/")
+pmltrain <- read.csv("pml-training.csv")
+pmltest <- read.csv("pml-testing.csv")
 ```
 
-"pml-testing" only has twenty rows and includes not the Attribut "classes".
+"pml-testing" only has twenty rows and do not include the classification how well the exercise is done (Attribute "classes").
 
-So for testing the model and estimate the expexted accuracy I create a training set and a test set from the pml-training data.
+So for testing the model and to estimate the expected accuracy I create a training set (75% of the data) and a test set (25% of the data) from the pml-training data.
 
-
-```{r}
-# create own training and testset from pmltrain
-set.seed(1234)
+```{r getTrainTest, cache=TRUE}
+# create own training and test data from pmltrain
 library(caret)
+set.seed(123)
 trainingRows <- createDataPartition(pmltrain$classe,
                                     p = .75,
                                     list= FALSE)
 training <- pmltrain[trainingRows,]
 testing <- pmltrain[-trainingRows,]  
-rm(trainingRows)
 ```
 
 ## Feature Selection
+By having a short look on the data you recognize that there are a lot of attributes and not all attributes are practical to do prediction for "classes".      
 
-The next step is the feature selection on the training data. 
+So let's do some feature selection on the training data.    
+ 
+I do the following:     
+- remove the first seven columns because they are not predictors    
+- remove the columns with low variance     
+- remove the columns with sparse values     
 
-I do the following:
-- remove the first seven columns which are not predictors
-- remove the columns wiht low variance
-- remove the columns with sparse values
+For the selection of the attributes with low variance I used the caret function "nearZeroVariance".     
+For the selection of sparse columns I define sparse when more than 95 % of the values are not available.     
 
-<!--
-
-```{r}
+```{r AttributeSelection, cache=TRUE}
 # Attribute selection
 # Remove first seven attributes
 training <- training[,-(1:7)]
 # Remove Attributes with low variance
 nearZeorVariance <- nearZeroVar(training)
 training <- training[,-nearZeorVariance]
-rm(nearZeorVariance)
 # Remove attributs with mostly NULL
-mostlyNA <- sapply(training, function(x) mean(is.na(x))) > 0.95
-training <- training[, mostlyNA==F]
-rm(mostlyNA)
+NotSparse <- sapply(training, function(x) mean(is.na(x))) <= 0.95
+training <- training[, NotSparse]
 ```
 
+After Feature Selection are 52 predicors and the attribute to predict, "classe", left.     
 
 ## Multiple Models
+With these predictors I build a couple of models with different methods by using the caret package.
+My laptop is not to bad, but I had to select some variables to get the algorithm run.     
 
-With these predictors I build a random forest model. 
-On the training set I get a accuracy of 100%. 
-On the testing set it is still a very high accuracy of ...%.
+First I built a model with a single regression tree.    
 
-```{r}
-# Random Forest
-fitControl <- trainControl(method="cv", number=3, verboseIter=F)
-modelFit <- train(classe ~ ., 
-                  data = training,
-                  method = "rf",
-                  trControl=fitControl
+```{r rpart, cache=TRUE}
+# single regression tree (CART Tree)
+# tune over complexity parameter -> rpart
+ctrl <- trainControl(method="cv", verboseIter=F)
+set.seed(123)
+rpartFit <- train(classe ~ ., 
+                data = training,
+                method = "rpart",
+                tuneLength = 20,                 
+                #complex = 1,
+                trControl=ctrl
 )
-#predict(modelFit)
-confusionMatrix(predict(modelFit), training$classe)
-# --> overfitting???
-predicttest <- predict(modelFit, newdata = testing)
-confusionMatrix(predicttest, testing$classe)
-# Modell auf Testdaten anwenden
-predictpmltest <- predict(modelFit, newdata = pmltest)
-# Ergebnis für das Quiz
-predictpmltest
-#[1] B A B A A E D B A A B C B A E E A B B B
-#Levels: A B C D E
 ```
 
--->
+
+```{r plot rpart,fig.width=6, fig.height=4, echo=FALSE, cache=TRUE}
+plot(rpartFit)
+```
+
+As second method I use "rpart2". Rpart2 has a different optimization algorithm.    
+
+```{r rpart2, cache=TRUE}
+# single regression tree (CART Tree)
+# tune over maximum depth -> rpart2
+ctrl <- trainControl(method="cv", verboseIter=F)
+set.seed(123)
+rpart2Fit <- train(classe ~ ., 
+                   data = training,
+                    method = "rpart2",
+                    tuneLength = 20,                 
+                    trControl=ctrl
+)
+```
+
+```{r plot rpart2,fig.width=6, fig.height=4, echo=FALSE, cache=TRUE}
+plot(rpart2Fit)
+```
+
+
+The Third model is "Random Forest".    
+3 repeats of 10-fold cross validation
+
+
+```{r RandomForest, cache=TRUE}
+set.seed(123)
+ctrl <- trainControl(method="cv", number=3, verboseIter=F)
+rfFit <- train(classe ~ ., 
+                data = training,
+                method = "rf",
+                trControl=ctrl
+)
+#predict(rfFit1)
+```
+
+
+```{r, print rf, cache=TRUE}
+print(rfFit)
+```
+
+The last model is "boosting regression" model (method = "gbm".)
+I have chosen a couple of parameters to get it run on my laptop.
+
+```{r gbm, cache=TRUE}
+# boosting regression
+gbmGrid <- expand.grid(interaction.depth = 2,
+                       n.trees = 10,
+                       shrinkage = 0.05,
+                       n.minobsinnode = 2)
+set.seed(123)
+gbmFit01 <- train(classe ~ ., 
+                data = training,
+                method = "gbm",
+                tuneGrid = gbmGrid,
+                verbose = F
+)
+```
+
+
+glm models can only use 2-class outcomes. So it is not possible to use it in this project because we more than two outcomes in the attribute "classes".
+
+As Summary for the different models I got the following results:    
+
+| Model   | Parameters                | Accuracy Training | Accuracy Test| Match 20 Samples |
+| --------|---------------------------|-------------------|--------------|------------------|
+| rpart   | tuneLenght=20,method="cv" | 0.791             | 0.793        | 13               | 
+| rpart2  | tuneLenght=20,method="cv" | 0.746             | 0.749        | 14               |
+| rf      | method="cv",number=3      | 0.989             | 0.993        | 20               | 
+| gbm     | interaction.depth=2,      | 0.652             | 0.652        | 9                |
+|         | n.trees=10,shrinkage=0.05 |                   |              |                  |
+|         | n.minobsinnode = 2        |                   |              |                  |  
+
+
+So I got the best results by using a Random Forest model. 
+The column "Match 20 samples" compares the prediction with the result of the project quiz. Just to show how different the results are by using a model with low accuracy.
+
+In the next steps I show exemplary with the Random Forest model how to get the accuracy and how to predict with the model.
+
+
+After building the model I first build a confusion Matrix with the training data. Then with the testing data.
+
+```{r confusion matrix training, cache=TRUE}
+library(caret)
+# Confusion Matrix on training data
+confusionMatrix(predict(rfFit), training$classe)
+```
+
+After set I do a prediction on the testing data and built a confusion matrix.
+
+```{r prediction and confusion matrix testing, cache=TRUE}
+# use model for the testing data 
+predicttest <- predict(rfFit, newdata = testing)
+# Confusion Matrix testing data
+confusionMatrix(predicttest, testing$classe)
+```
+
+On the training set I get a accuracy of 100%.    
+On the testing set it is still a very high accuracy of 99.25%.    
+
+I calculate the prediction on the small given data set "pml-test" with this model and the result meets the expected outcome on the Coursera Course Project Prediction Quiz.
+
+```{r prediction pml-test, cache=TRUE}
+# use model for the "pml-test" data
+predictpmltestrf <- predict(rfFit, newdata = pmltest)
+# Ergebnis für das Quiz (uncommantated)
+#predictpmltest
+```
+
+To get the hits of the other methods I simply compare the result with the result of the random forest model (which I knew from the project quiz that these results meets the expectation).
+
+As example with the rpart model:
+
+```{r comparison pml-test, cache=TRUE}
+# use models for the "pml-test" data
+# compare the results and summarize equal predictions 
+sum (predict(rfFit, newdata = pmltest) == predict(rpartFit, newdata = pmltest))
+```
